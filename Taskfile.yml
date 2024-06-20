@@ -18,7 +18,6 @@ tasks:
     cmds:
       - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
       - cp bin/qd $HOME/bin
-      - 
 
   checks:
     cmds:
