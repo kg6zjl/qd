@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/qd.jpg?raw=true" alt="Happy Containers" width="40%">
+</p>
+
 # K8s Quick Deploy
 A super simple way to deploy a container to K8s.
 
