@@ -18,6 +18,9 @@ before:
 builds:
   - env:
       - CGO_ENABLED=0
+    flags:
+      - -ldflags "-X qd/cmd.Version=$(cat VERSION)"
+
     goos:
       - linux
       - windows
