@@ -19,8 +19,7 @@ builds:
   - env:
       - CGO_ENABLED=0
     ldflags:
-      - -s -w -X qd/cmd.Version={{.Version}}
-
+      - -X qd/cmd.Version={{.Version}}
     goos:
       - linux
       - windows
