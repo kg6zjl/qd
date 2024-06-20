@@ -14,11 +14,34 @@ tasks:
       - go run main.go run alpine:latest
   
   build:
+    deps: [checks]
+    cmds:
+      - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
+      - cp bin/qd $HOME/bin
+      - 
+
+  checks:
     cmds:
       - go mod tidy
       - go mod verify
       - go fmt
       - go vet
       - go clean
-      - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
-      - cp bin/qd $HOME/bin
+
+  local-release:
+    cmds:
+      - goreleaser release --snapshot --clean
+  
+  local-build:
+    cmds:
+      - goreleaser build --snapshot --clean
+
+  release:
+    deps: [checks, local-build]
+    cmds:
+      - goreleaser release --clean
+
+  tag:
+    cmds:
+      - git tag -a v$(cat VERSION) -m "Release v$(cat VERSION)"
+      - git push origin v$(cat VERSION)
