@@ -198,13 +198,17 @@ func exec(clientset *kubernetes.Clientset, podName string, namespace string, com
 }
 
 func ReadKubeConfig(kubeconfig string) *rest.Config {
-
-	// Expand the "~" to the actual home directory
-	usr, err := user.Current()
-	if err != nil {
-		log.Fatalf("Cannot get current user: %s", err.Error())
+	// Check if KUBECONFIG environment variable is set
+	if os.Getenv("KUBECONFIG") != "" {
+		kubeconfig = os.Getenv("KUBECONFIG")
+	} else {
+		// Expand the "~" to the actual home directory
+		usr, err := user.Current()
+		if err != nil {
+			log.Fatalf("Cannot get current user: %s", err.Error())
+		}
+		kubeconfig = strings.Replace(kubeconfig, "~", usr.HomeDir, 1)
 	}
-	kubeconfig = strings.Replace(kubeconfig, "~", usr.HomeDir, 1)
 
 	// Check if the file exists
 	if _, err := os.Stat(kubeconfig); os.IsNotExist(err) {
