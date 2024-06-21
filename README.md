@@ -54,5 +54,12 @@ Stopped deployment ubuntu-qd-650186231124
 
 ## Exec
 ```
-$ qd exec ubuntu
+$ qd exec busybox
+Creating deployment...
+Created deployment "busybox-qd-72162478"
+Waiting for busybox-qd-72162478 deployment to be created
+/ # ping $KUBERNETES_SERVICE_HOST
+ping $KUBERNETES_SERVICE_HOST
+PING 10.96.0.1 (10.96.0.1): 56 data bytes
+64 bytes from 10.96.0.1: seq=0 ttl=62 time=1.081 ms
 ```

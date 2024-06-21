@@ -3,7 +3,7 @@ qd (QuickDeploy)
 
 Quickly deploy an image to K8s as a deployment.
 
-usage:
+example usage:
 qd run alpine:latest
 qd exec ubuntu:latest
 qd list
