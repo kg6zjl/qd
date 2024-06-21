@@ -2,24 +2,38 @@
 version: 3
 
 tasks:
+  default:
+    silent: true
+    desc: <-- You are here
+    cmds:
+      - echo "Welcome to QuickDeploy (qd)"
+      - echo "Please pick from one of these options:"
+      - task --list-all
+      - task `task --list-all | grep "^*" | tr -d ':' | pick -c2`
+
   init:
+    desc: Runs go setup and downloads deps
     cmds:
       - go mod init || echo "go.mod already exists"
       - go mod tidy
   
   run:
+    desc: go run main.go run alpine:latest
     cmds:
       - go mod tidy
       - go vet
       - go run main.go run alpine:latest
   
   build:
+    desc: Builds locally without goreleaser
     deps: [checks]
     cmds:
-      - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
-      - cp bin/qd $HOME/bin
+      - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)-dev" -o=bin/qd .
+      - mkdir -p $HOME/bin && cp bin/qd $HOME/bin
+      - qd version
 
   checks:
+    desc: go tidy/verify/fmt/vet/clean
     cmds:
       - go mod tidy
       - go mod verify
@@ -28,19 +42,23 @@ tasks:
       - go clean
 
   local-release:
+    desc: Local goreleaser release
     cmds:
       - goreleaser release --snapshot --clean
   
   local-build:
+    desc: Local goreleaser build
     cmds:
       - goreleaser build --snapshot --clean
 
   release:
+    desc: Runs goreleaser release --clean
     deps: [checks, local-build]
     cmds:
       - goreleaser release --clean
 
   tag:
+    desc: Reads VERSION file and creates a new tag with $(cat VERSION)
     cmds:
       - git tag -a v$(cat VERSION) -m "Release v$(cat VERSION)"
       - git push origin v$(cat VERSION)

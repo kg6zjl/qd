@@ -3,6 +3,7 @@ package kube
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/user"
@@ -21,6 +22,118 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/remotecommand"
 )
+
+func CopyAndRun(deployclient appstypedv1.DeploymentInterface, image string, namespace string, restconfig *rest.Config, clientset *kubernetes.Clientset, srcPath string) error {
+	// deploy
+	deployName := Run(deployclient, image, true)
+
+	// wait for pod to come up
+	err := waitForDeploymentReady(clientset, deployName, namespace)
+	if err != nil {
+		log.Fatalf("Error waiting for pod to be ready: %s", err.Error())
+		return err
+	}
+
+	podNames, err := getPodsinDeploy(clientset, namespace, deployName)
+	if err != nil {
+		log.Fatalf("Pod not found, error: %s", err.Error())
+		return err
+	}
+
+	err = copy(clientset, podNames[0], namespace, restconfig, srcPath)
+	if err != nil {
+		log.Fatalf("Failed to copy file, error: %s", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func executeCommand(clientset *kubernetes.Clientset, podName string, namespace string, config *rest.Config, commandString []string) error {
+	req := clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command: commandString,
+			Stdin:   false,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     true,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+
+	err = exec.StreamWithContext(context.TODO(), remotecommand.StreamOptions{
+		Stdin:             os.Stdin,
+		Stdout:            os.Stdout,
+		Stderr:            os.Stderr,
+		Tty:               true,
+		TerminalSizeQueue: nil,
+	})
+
+	return err
+}
+
+func copy(clientset *kubernetes.Clientset, podName string, namespace string, config *rest.Config, srcPath string) error {
+	var destPath = "/app/data"
+
+	// send the command to make the dir
+	err := executeCommand(clientset, podName, namespace, config, []string{"mkdir", "-p", destPath})
+	if err != nil {
+		log.Fatalf("Failed to execute untar command: %s", err.Error())
+		return err
+	}
+
+	// set up reader/writer to steam the tar'd file to the pod
+	reader, writer := io.Pipe()
+
+	go func() {
+		defer writer.Close()
+		err := utils.KubeCpMakeTar(srcPath, writer)
+		if err != nil {
+			log.Fatalf("Error while making tar: %s", err.Error())
+		}
+	}()
+
+	// setup the client to stream the tar contents
+	req := clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Command: []string{"tar", "-xzf", "-", "-C", destPath},
+			Stdin:   false,
+			Stdout:  true,
+			Stderr:  true,
+			TTY:     true,
+		}, scheme.ParameterCodec)
+
+	exec, err := remotecommand.NewSPDYExecutor(config, "POST", req.URL())
+	if err != nil {
+		return err
+	}
+
+	err = exec.StreamWithContext(context.TODO(), remotecommand.StreamOptions{
+		Stdin:             reader,
+		Stdout:            os.Stdout,
+		Stderr:            os.Stderr,
+		Tty:               false,
+		TerminalSizeQueue: nil,
+	})
+
+	if err != nil {
+		log.Fatalf("Failed to execute untar command: %s", err.Error())
+		return err
+	}
+	fmt.Println("made it here")
+	return err
+}
 
 func Stop(deploymentClient appstypedv1.DeploymentInterface) {
 	deployments, _ := deploymentClient.List(context.TODO(), v1.ListOptions{})
@@ -81,7 +194,7 @@ func waitForDeploymentReady(clientset *kubernetes.Clientset, deployName string, 
 
 func RunAndExec(deployclient appstypedv1.DeploymentInterface, image string, namespace string, restconfig *rest.Config, clientset *kubernetes.Clientset) error {
 	// deploy
-	deployName := Run(deployclient, image)
+	deployName := Run(deployclient, image, false)
 
 	// wait for pod to come up
 	err := waitForDeploymentReady(clientset, deployName, namespace)
@@ -100,8 +213,9 @@ func RunAndExec(deployclient appstypedv1.DeploymentInterface, image string, name
 	return nil
 }
 
-func Run(deploymentClient appstypedv1.DeploymentInterface, image string, names ...string) string {
+func Run(deploymentClient appstypedv1.DeploymentInterface, image string, mountVol bool, names ...string) string {
 	var name string
+
 	if len(names) > 0 {
 		name = names[0]
 	} else {
@@ -138,6 +252,19 @@ func Run(deploymentClient appstypedv1.DeploymentInterface, image string, names .
 					},
 				},
 				Spec: corev1.PodSpec{
+					Volumes: func() []corev1.Volume {
+						if mountVol {
+							return []corev1.Volume{
+								{
+									Name: "data-volume",
+									VolumeSource: corev1.VolumeSource{
+										EmptyDir: &corev1.EmptyDirVolumeSource{},
+									},
+								},
+							}
+						}
+						return nil
+					}(),
 					DNSPolicy: corev1.DNSClusterFirst,
 					Containers: []corev1.Container{
 						{
@@ -148,6 +275,17 @@ func Run(deploymentClient appstypedv1.DeploymentInterface, image string, names .
 								"-c",
 								"sleep infinity",
 							},
+							VolumeMounts: func() []corev1.VolumeMount {
+								if mountVol {
+									return []corev1.VolumeMount{
+										{
+											Name:      "data-volume",
+											MountPath: "/app/data",
+										},
+									}
+								}
+								return nil
+							}(),
 						},
 					},
 				},

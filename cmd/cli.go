@@ -2,8 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"qd/docker"
 	"qd/kube"
 
 	"github.com/spf13/cobra"
@@ -11,8 +9,9 @@ import (
 )
 
 var kubeconfig string
-
 var Version string
+var copyFile string
+var entryPoint string
 
 var rootCmd = &cobra.Command{
 	Use:   "qd",
@@ -24,13 +23,13 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Return qd version",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Version v%s", Version)
+		fmt.Printf("Version v%s\n", Version)
 	},
 }
 
 var runCmd = &cobra.Command{
 	Use:   "run [image:tag]",
-	Short: "Run a new deployment",
+	Short: "Run image as a new deployment",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		// read config
@@ -41,9 +40,35 @@ var runCmd = &cobra.Command{
 		namespace := kube.CurrentNamespace()
 		// setup deployment
 		deploymentClient := clientset.AppsV1().Deployments(namespace)
-		_ = kube.Run(deploymentClient, args[0])
+		copyFile, _ := cmd.Flags().GetString("copy")
+		if cmd.Flags().Changed("copy") {
+			_ = kube.CopyAndRun(deploymentClient, args[0], namespace, config, clientset, copyFile)
+
+		} else if cmd.Flags().Changed("entrypoint") {
+			fmt.Println("Feature not implemented yet")
+		} else {
+			_ = kube.Run(deploymentClient, args[0], false)
+		}
 	},
 }
+
+// var copyCmd = &cobra.Command{
+// 	Use:   "copy [image:tag]",
+// 	Short: "Copy a file into pod and set as entrypoint",
+// 	Args:  cobra.ExactArgs(1),
+// 	Run: func(cmd *cobra.Command, args []string) {
+// 		// read config
+// 		config := kube.ReadKubeConfig(kubeconfig)
+// 		// setup client
+// 		clientset, _ := kubernetes.NewForConfig(config)
+// 		// get current context namespace
+// 		namespace := kube.CurrentNamespace()
+// 		// setup deployment
+// 		deploymentClient := clientset.AppsV1().Deployments(namespace)
+
+// 		kube.CopyAndExec(deploymentClient, args[0], namespace, config, clientset, copyFile)
+// 	},
+// }
 
 var listCmd = &cobra.Command{
 	Use:   "list",
@@ -61,25 +86,25 @@ var listCmd = &cobra.Command{
 	},
 }
 
-var buildDeployCmd = &cobra.Command{
-	Use:   "build",
-	Short: "Docker build and then deploy",
-	Run: func(cmd *cobra.Command, args []string) {
-		// read config
-		config := kube.ReadKubeConfig(kubeconfig)
-		// setup client
-		clientset, _ := kubernetes.NewForConfig(config)
-		// get current context namespace
-		namespace := kube.CurrentNamespace()
-		// setup deployment
-		deploymentClient := clientset.AppsV1().Deployments(namespace)
-		imageName, err := docker.BuildDeploy()
-		if err != nil {
-			log.Fatalf("Failed to build Docker image: %s", err)
-		}
-		kube.Run(deploymentClient, imageName)
-	},
-}
+// var buildDeployCmd = &cobra.Command{
+// 	Use:   "build",
+// 	Short: "Docker build and then deploy",
+// 	Run: func(cmd *cobra.Command, args []string) {
+// 		// read config
+// 		config := kube.ReadKubeConfig(kubeconfig)
+// 		// setup client
+// 		clientset, _ := kubernetes.NewForConfig(config)
+// 		// get current context namespace
+// 		namespace := kube.CurrentNamespace()
+// 		// setup deployment
+// 		deploymentClient := clientset.AppsV1().Deployments(namespace)
+// 		imageName, err := docker.BuildDeploy()
+// 		if err != nil {
+// 			log.Fatalf("Failed to build Docker image: %s", err)
+// 		}
+// 		kube.Run(deploymentClient, imageName)
+// 	},
+// }
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
@@ -115,8 +140,13 @@ var execCmd = &cobra.Command{
 	},
 }
 
+func init() {
+	runCmd.Flags().StringVarP(&copyFile, "copy", "c", "", "File to copy into the container (/app/data)")
+	runCmd.Flags().StringVarP(&entryPoint, "entrypoint", "e", "", "Entrypoint command to run")
+}
+
 func Run() {
 	rootCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "~/.kube/config", "absolute path to the kubeconfig file")
-	rootCmd.AddCommand(versionCmd, runCmd, listCmd, stopCmd, execCmd, buildDeployCmd)
+	rootCmd.AddCommand(versionCmd, runCmd, listCmd, stopCmd, execCmd) //buildDeployCmd
 	rootCmd.Execute()
 }
