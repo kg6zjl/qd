@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"log"
+	"qd/docker"
 	"qd/kube"
 
 	"github.com/spf13/cobra"
@@ -9,6 +11,8 @@ import (
 )
 
 var kubeconfig string
+var cluster string
+var namespace string
 var Version string
 var copyFile string
 var entryPoint string
@@ -86,25 +90,25 @@ var listCmd = &cobra.Command{
 	},
 }
 
-// var buildDeployCmd = &cobra.Command{
-// 	Use:   "build",
-// 	Short: "Docker build and then deploy",
-// 	Run: func(cmd *cobra.Command, args []string) {
-// 		// read config
-// 		config := kube.ReadKubeConfig(kubeconfig)
-// 		// setup client
-// 		clientset, _ := kubernetes.NewForConfig(config)
-// 		// get current context namespace
-// 		namespace := kube.CurrentNamespace()
-// 		// setup deployment
-// 		deploymentClient := clientset.AppsV1().Deployments(namespace)
-// 		imageName, err := docker.BuildDeploy()
-// 		if err != nil {
-// 			log.Fatalf("Failed to build Docker image: %s", err)
-// 		}
-// 		kube.Run(deploymentClient, imageName)
-// 	},
-// }
+var buildDeployCmd = &cobra.Command{
+	Use:   "build",
+	Short: "Docker build and then deploy",
+	Run: func(cmd *cobra.Command, args []string) {
+		// read config
+		config := kube.ReadKubeConfig(kubeconfig)
+		// setup client
+		clientset, _ := kubernetes.NewForConfig(config)
+		// get current context namespace
+		namespace := kube.CurrentNamespace()
+		// setup deployment
+		deploymentClient := clientset.AppsV1().Deployments(namespace)
+		imageName, err := docker.BuildDeploy()
+		if err != nil {
+			log.Fatalf("Failed to build Docker image: %s", err)
+		}
+		kube.Run(deploymentClient, imageName, false)
+	},
+}
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
@@ -147,6 +151,8 @@ func init() {
 
 func Run() {
 	rootCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "~/.kube/config", "absolute path to the kubeconfig file")
+	rootCmd.PersistentFlags().StringVar(&namespace, "namespace", "", "kubernetes namespace")
+	rootCmd.PersistentFlags().StringVar(&cluster, "cluster", "", "kubernetes cluster")
 	rootCmd.AddCommand(versionCmd, runCmd, listCmd, stopCmd, execCmd) //buildDeployCmd
 	rootCmd.Execute()
 }

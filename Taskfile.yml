@@ -9,7 +9,7 @@ tasks:
       - echo "Welcome to QuickDeploy (qd)"
       - echo "Please pick from one of these options:"
       - task --list-all
-      - task `task --list-all | grep "^*" | tr -d ':' | pick -c2`
+      - task `task --list-all | grep "^*" | tr -d ':' | pick -c2` 
 
   init:
     desc: Runs go setup and downloads deps
