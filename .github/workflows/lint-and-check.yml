@@ -1,4 +1,4 @@
-name: Lint and run checks
+name: Tests
 
 on:
   push:
