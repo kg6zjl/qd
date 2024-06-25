@@ -18,7 +18,7 @@ func UniqName(base string) string {
 	uniqueId := strconv.Itoa(randInt)
 
 	// get short name (63 chars and limited special chars)
-	shortBase := short_name(base)
+	shortBase := shortName(base)
 
 	// verify the unique bit is at least 12 chars or use the whatever we've got
 	if len(uniqueId) > 8 {
@@ -31,7 +31,7 @@ func UniqName(base string) string {
 	return uniqueName
 }
 
-func short_name(base string) string {
+func shortName(base string) string {
 	var shortStr string
 	// Check if "/" is in the string
 	if strings.Contains(base, "/") {
