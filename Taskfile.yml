@@ -14,7 +14,6 @@ tasks:
       - go run main.go run alpine:latest
   
   build:
-    deps: [checks]
     cmds:
       - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
       - cp bin/qd $HOME/bin
@@ -49,5 +48,7 @@ tasks:
       - git push origin v$(cat VERSION)
   
   test:
+    deps: [build]
     cmds:
       - go test ./...
+      - ./tests/integration_test.sh bin/qd
