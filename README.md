@@ -1,3 +1,5 @@
+[![Build & Release](https://github.com/kg6zjl/qd/actions/workflows/goreleaser.yml/badge.svg)](https://github.com/kg6zjl/qd/actions/workflows/goreleaser.yml) [![Tests](https://github.com/kg6zjl/qd/actions/workflows/lint-and-check.yml/badge.svg)](https://github.com/kg6zjl/qd/actions/workflows/lint-and-check.yml)
+
 <p align="center">
   <img src="images/qd.jpg?raw=true" alt="Happy Containers" width="40%">
 </p>
