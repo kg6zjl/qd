@@ -20,6 +20,9 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: 1.22
+      - 
+        name: Run task tests and checks
+        run: task checks
       -
         name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
