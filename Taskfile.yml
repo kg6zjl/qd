@@ -2,17 +2,22 @@
 version: 3
 
 tasks:
+  default:
+    desc: <-- You are here
+    cmds:
+      - task --list-all
+
   init:
     cmds:
       - go mod init || echo "go.mod already exists"
       - go mod tidy
-  
+
   run:
     cmds:
       - go mod tidy
       - go vet
       - go run main.go run alpine:latest
-  
+
   build:
     cmds:
       - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
@@ -31,7 +36,7 @@ tasks:
     deps: [test]
     cmds:
       - goreleaser release --snapshot --clean
-  
+
   local-build:
     deps: [test]
     cmds:
@@ -46,7 +51,7 @@ tasks:
     cmds:
       - git tag -a v$(cat VERSION) -m "Release v$(cat VERSION)"
       - git push origin v$(cat VERSION)
-  
+
   test:
     deps: [build]
     cmds:
