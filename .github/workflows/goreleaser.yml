@@ -1,12 +1,12 @@
 name: Build & Release
 
 permissions:
-    contents: write
+  contents: write
 
 on:
   push:
     tags:
-      - '*'
+      - "*"
 
 jobs:
   goreleaser:
@@ -14,6 +14,9 @@ jobs:
     steps:
       - name: Install expect on Ubuntu
         run: sudo apt-get install -y expect
+
+      - name: Install taskfile
+        run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
       - name: Checkout
         uses: actions/checkout@v4
