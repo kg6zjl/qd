@@ -3,21 +3,27 @@ name: Tests
 on:
   push:
     branches:
-      - '**'
+      - "**"
+  pull_request:
 
 jobs:
   checks:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install expect on Ubuntu
+      - name: Install expect
         run: sudo apt-get install -y expect
 
-      - name: Install taskfile
+      - name: Install Taskfile
         run: sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
 
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Run task tests and checks
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Run checks
         run: task checks
