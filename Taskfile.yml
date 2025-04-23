@@ -3,57 +3,71 @@ version: 3
 
 tasks:
   default:
-    desc: <-- You are here
+    desc: Show all available tasks
     cmds:
       - task --list-all
 
   init:
+    desc: Initialize Go module and tidy dependencies
     cmds:
       - go mod init || echo "go.mod already exists"
-      - go mod tidy
+      - task tidy
 
   run:
+    desc: Run the CLI with example args
     cmds:
-      - go mod tidy
       - go vet
       - go run main.go run alpine:latest
 
   build:
+    desc: Build the binary
     cmds:
       - go build -ldflags "-X qd/cmd.Version=$(cat VERSION)" -o=bin/qd .
+      - mkdir -p $HOME/bin
       - cp bin/qd $HOME/bin
 
-  checks:
-    deps: [test]
-    cmds:
-      - go mod tidy
-      - go mod verify
-      - go fmt
-      - go vet
-      - go clean
-
-  local-release:
-    deps: [test]
-    cmds:
-      - goreleaser release --snapshot --clean
-
-  local-build:
-    deps: [test]
-    cmds:
-      - goreleaser build --snapshot --clean
-
-  release:
-    deps: [checks, local-build]
-    cmds:
-      - goreleaser release --clean
-
-  tag:
-    cmds:
-      - git tag -a v$(cat VERSION) -m "Release v$(cat VERSION)"
-      - git push origin v$(cat VERSION)
-
   test:
+    desc: Run unit and integration tests
     deps: [build]
     cmds:
       - go test ./...
       - ./tests/integration_test.sh bin/qd
+
+  tidy:
+    desc: Ensure go.mod and go.sum are clean
+    cmds:
+      - go mod tidy
+      - go mod verify
+      - git diff --exit-code go.mod go.sum || (echo "Run 'go mod tidy' and commit changes." && exit 1)
+
+  checks:
+    desc: Perform all code checks
+    deps: [tidy, test]
+    cmds:
+      - go fmt ./...
+      - go vet ./...
+      - go clean
+
+  tag:
+    desc: Tag current commit with version
+    cmds:
+      - git tag -a v$(cat VERSION) -m "Release v$(cat VERSION)"
+      - git push origin v$(cat VERSION)
+
+  local-build:
+    desc: Run snapshot build locally
+    deps: [test]
+    cmds:
+      - goreleaser build --snapshot --clean
+
+  local-release:
+    desc: Run snapshot release locally
+    deps: [test]
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  release:
+    desc: Full release pipeline
+    deps: [checks, local-build]
+    cmds:
+      - goreleaser release --clean
